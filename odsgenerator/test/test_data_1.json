@@ -1,0 +1,135 @@
+{
+    "styles": [
+        {
+            "name": "bg_yellow",
+            "style": "<style:style style:family=\"table-cell\"\nstyle:parent-style-name=\"Default\">\n<style:table-cell-properties fo:background-color=\"#fff9ae\"/>\n<style:paragraph-properties\nfo:margin-left=\"1.2mm\" fo:margin-right=\"1.2mm\"/>\n</style:style>\n"
+        }, {
+            "name": "bg_yellow_grid06",
+            "style": "\n<style:style style:family=\"table-cell\"\nstyle:parent-style-name=\"Default\">\n<style:table-cell-properties fo:background-color=\"#fff9ae\"\nfo:border=\"0.06pt solid #000000\"/>\n<style:paragraph-properties\nfo:margin-left=\"1.2mm\" fo:margin-right=\"1.2mm\"/>\n</style:style>\n"
+        }
+    ],
+    "defaults": {
+        "styles_str": "bold"
+    },
+    "body": [
+        {
+            "name": "first tab",
+            "table": [
+                [
+                    "a",
+                    "b",
+                    "c",
+                    "d",
+                    "e",
+                    "f",
+                    "g",
+                    "h",
+                    "i",
+                    "j"
+                ],
+                [
+                    0,
+                    10,
+                    20,
+                    30,
+                    40,
+                    50,
+                    60,
+                    70,
+                    80,
+                    90
+                ],
+                [
+                    1,
+                    11,
+                    21,
+                    31,
+                    41,
+                    51,
+                    61,
+                    71,
+                    81,
+                    91
+                ],
+                [
+                    2,
+                    12,
+                    22,
+                    32,
+                    42,
+                    52,
+                    62,
+                    72,
+                    82,
+                    92
+                ]
+            ],
+            "style": [
+                "number", "table_row_1cm"
+            ],
+            "width": ["2cm", "4cm", "2cm", "4cm", "5cm"]
+        }, {
+            "name": "second tab",
+            "table": [
+                {
+                    "row": [
+                        "a",
+                        "b",
+                        "c",
+                        "d",
+                        "e",
+                        "f",
+                        "g",
+                        "h",
+                        "i",
+                        "j"
+                    ],
+                    "style": "bold_left_bg_gray_grid06"
+                }, {
+                    "row": [
+                        100.01,
+                        110.02,
+                        "hop",
+                        130,
+                        140,
+                        150,
+                        160,
+                        170,
+                        180,
+                        190
+                    ],
+                    "style": "grid06"
+                }, {
+                    "row": [
+                        101,
+                        111, {
+                            "value": 121,
+                            "style": "bg_yellow_grid06"
+                        },
+                        131,
+                        141,
+                        151,
+                        161,
+                        171,
+                        181,
+                        191
+                    ],
+                    "style": "grid06"
+                },
+                [
+                    102.314,
+                    112,
+                    122,
+                    132,
+                    142,
+                    152,
+                    162,
+                    172,
+                    182,
+                    192
+                ]
+            ],
+            "width": "2.5cm"
+        }
+    ]
+}
