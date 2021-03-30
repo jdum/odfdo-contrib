@@ -3,17 +3,78 @@
 # Licence: MIT
 # Authors: jerome.dumonteil@gmail.com
 """
-Quick .ODS generator from json file, using odfdo library
+Simple .ODS generator from json file, using odfdo library
+
+Usage:
+    odsgenerator.py <input.json> <output.ods>"
+
+Principle:
+    - a document is a list of tabs,
+    - a tab is a list of of rows,
+    - a row is a list of cells.
+
+A cell can be:
+    - int, float or str
+    - a dict, with the following keys (only the 'value' key is mandatory)
+        - value: int, float or str
+        - style: str or list of str, a style name or a list of style names
+        - text: str, a string representation of the value (for ODF readers
+          who use it).
+
+A row can be:
+    - a list of cells
+    - a dict, with the following keys (only the 'row' key is mandatory)
+        - row: a list of cells, see above
+        - style: str or list of str, a style name or a list of style names
+
+A tab can be:
+    - a list of rows
+    - a dict, with the following keys (only the 'table' key is mandatory)
+        - table: a list of rows,
+        - width: a list containing the width of each column of the table
+        - name: str, the name of the tab
+        - style: str or list of str, a style name or a list of style names
+
+A document can be:
+    - a list of tabs
+    - a dict, with the following keys (only the 'body' key is mandatory)
+        - body: a list of tabs
+        - styles: a list of dict of styles defintitions
+        - defaults: a dict, for the defaults styles
+
+A style definition is a dict with 2 items:
+    - name: str, the name of the style.
+    - an XML definition of the ODF style, see DEFAULT_STYLES below.
+
+The styles provided for a row or a table can be of family table-row or
+table-cell, they apply to row or and below cells. A style defined at a
+lower level (cell for instance) has priority over the style defined above
+(row for instance).
+
+In short, if you don't need custom styles, this is a valid document
+description:
+    "[ [ ["a", "b", "c" ] ] ]"
+This json string will create a document with only one tab (name will
+be "Tab 1" by default), containing one row of 3 values "a", "b", "c".
+
+Styles:
+    - the DEFAULT_STYLES defined below are always available, they can be
+      called by their name for cells or rows.
+    - To add a custom style, use the "styles" category of the document dict.
+      A style is a dict with 2 keys, "definition" and "name".
 """
 
 import sys
 import json
+import odfdo
 from odfdo import Document, Table, Row, Cell, Element
+
+__version__ = 1.2
 
 DEFAULT_STYLES = [
     {
         "name": "default_table_row",
-        "style": """
+        "definition": """
             <style:style style:family="table-row">
             <style:table-row-properties style:row-height="4.52mm"
             fo:break-before="auto" style:use-optimal-row-height="true"/>
@@ -22,7 +83,7 @@ DEFAULT_STYLES = [
     },
     {
         "name": "table_row_1cm",
-        "style": """
+        "definition": """
             <style:style style:family="table-row">
             <style:table-row-properties style:row-height="1cm"
             fo:break-before="auto"/>
@@ -31,7 +92,7 @@ DEFAULT_STYLES = [
     },
     {
         "name": "bold",
-        "style": """
+        "definition": """
             <style:style style:family="table-cell"
             style:parent-style-name="Default">
             <style:text-properties fo:font-weight="bold"
@@ -43,8 +104,20 @@ DEFAULT_STYLES = [
         """,
     },
     {
+        "name": "bold_center",
+        "definition": """
+            <style:style style:family="table-cell"
+            style:parent-style-name="Default">
+            <style:text-properties fo:font-weight="bold"
+            style:font-weight-asian="bold" style:font-weight-complex="bold"/>
+            <style:table-cell-properties style:text-align-source="vfix"/>
+            <style:paragraph-properties fo:text-align="center"/>
+            </style:style>
+        """,
+    },
+    {
         "name": "left",
-        "style": """
+        "definition": """
             <style:style style:family="table-cell"
             style:parent-style-name="Default">
             <style:table-cell-properties style:text-align-source="fix"/>
@@ -55,7 +128,7 @@ DEFAULT_STYLES = [
     },
     {
         "name": "right",
-        "style": """
+        "definition": """
             <style:style style:family="table-cell"
             style:parent-style-name="Default">
             <style:table-cell-properties style:text-align-source="fix"/>
@@ -66,7 +139,7 @@ DEFAULT_STYLES = [
     },
     {
         "name": "center",
-        "style": """
+        "definition": """
             <style:style style:family="table-cell"
             style:parent-style-name="Default">
             <style:table-cell-properties style:text-align-source="fix"/>
@@ -75,30 +148,195 @@ DEFAULT_STYLES = [
         """,
     },
     {
-        "name": "bold_left_bg_gray_grid06",
-        "style": """
-            <style:style style:family="table-cell"
-            style:parent-style-name="Default">
-            <style:table-cell-properties fo:font-weight="bold"
-            style:font-weight-asian="bold" style:font-weight-complex="bold"
-            fo:background-color="#dddddd" fo:border="0.06pt solid #000000"
-            style:text-align-source="fix"/>
-            <style:paragraph-properties fo:text-align="start"
-            fo:margin-left="1.2mm"/>
-            </style:style>
+        "name": "dec1",
+        "definition": """
+            <number:number-style><number:number number:decimal-places="1"
+            loext:min-decimal-places="1" number:min-integer-digits="1"
+            number:grouping="false"/>
+            </number:number-style>
         """,
+        "always_insert": True,
+    },
+    {
+        "name": "dec2",
+        "definition": """
+            <number:number-style><number:number number:decimal-places="2"
+            loext:min-decimal-places="2" number:min-integer-digits="1"
+            number:grouping="false"/>
+            </number:number-style>
+        """,
+        "always_insert": True,
+    },
+    {
+        "name": "dec4",
+        "definition": """
+            <number:number-style><number:number number:decimal-places="4"
+            loext:min-decimal-places="4" number:min-integer-digits="1"
+            number:grouping="false"/>
+            </number:number-style>
+        """,
+        "always_insert": True,
+    },
+    {
+        "name": "dec6",
+        "definition": """
+            <number:number-style><number:number number:decimal-places="6"
+            loext:min-decimal-places="6" number:min-integer-digits="1"
+            number:grouping="false"/>
+            </number:number-style>
+        """,
+        "always_insert": True,
+    },
+    {
+        "name": "integer",
+        "definition": """
+            <number:number-style><number:number number:decimal-places="0"
+            loext:min-decimal-places="0" number:min-integer-digits="1"
+            number:grouping="false"/>
+            </number:number-style>
+        """,
+        "always_insert": True,
+    },
+    {
+        "name": "integer_no0",
+        "definition": """
+            <number:number-style><number:number number:decimal-places="0"
+            loext:min-decimal-places="0" number:min-integer-digits="0"
+            number:grouping="false"/>
+            </number:number-style>
+        """,
+        "always_insert": True,
     },
     {
         "name": "grid06",
-        "style": """
-            <style:style style:family="table-cell"
-            style:parent-style-name="Default">
-            <style:table-cell-properties
-            fo:border="0.06pt solid #000000"/>
-            <style:paragraph-properties
-            fo:margin-left="1.2mm" fo:margin-right="1.2mm"/>
-            </style:style>
-        """,
+        "definition": """
+             <style:style style:family="table-cell"
+             style:parent-style-name="Default">
+             <style:table-cell-properties
+             fo:border="0.06pt solid #000000"/>
+             <style:paragraph-properties
+             fo:margin-left="1.2mm" fo:margin-right="1.2mm"/>
+             </style:style>
+         """,
+    },
+    {
+        "name": "bold_left_bg_gray_grid06",
+        "definition": """
+             <style:style style:family="table-cell"
+             style:parent-style-name="Default">
+             <style:table-cell-properties fo:font-weight="bold"
+             style:font-weight-asian="bold" style:font-weight-complex="bold"
+             fo:background-color="#dddddd" fo:border="0.06pt solid #000000"
+             style:text-align-source="fix"/>
+             <style:paragraph-properties fo:text-align="start"
+             fo:margin-left="1.2mm"/>
+             </style:style>
+         """,
+    },
+    {
+        "name": "bold_center_bg_gray_grid06",
+        "definition": """
+             <style:style style:family="table-cell"
+             style:parent-style-name="Default">
+             <style:table-cell-properties fo:font-weight="bold"
+             style:font-weight-asian="bold" style:font-weight-complex="bold"
+             fo:background-color="#dddddd" fo:border="0.06pt solid #000000"
+             style:text-align-source="fix"/>
+             <style:paragraph-properties fo:text-align="center"/>
+             </style:style>
+         """,
+    },
+    {
+        "name": "grid06_right",
+        "definition": """
+             <style:style style:family="table-cell"
+             style:parent-style-name="Default">
+             <style:table-cell-properties style:text-align-source="fix"
+             fo:border="0.06pt solid #000000"/>
+             <style:paragraph-properties
+             fo:margin-right="1.2mm" fo:text-align="end"/>
+             </style:style>
+         """,
+    },
+    {
+        "name": "grid06_int",
+        "definition": """
+             <style:style style:family="table-cell"
+             style:parent-style-name="Default" style:data-style-name="integer">
+             <style:table-cell-properties
+             fo:border="0.06pt solid #000000"/>
+             <style:paragraph-properties
+             fo:margin-left="1.2mm" fo:margin-right="1.2mm"/>
+             </style:style>
+         """,
+    },
+    {
+        "name": "grid06_center_int",
+        "definition": """
+             <style:style style:family="table-cell"
+             style:parent-style-name="Default" style:data-style-name="integer_no0">
+             <style:table-cell-properties fo:border="0.06pt solid #000000"/>
+             <style:paragraph-properties fo:text-align="center"/>
+             </style:style>
+         """,
+    },
+    {
+        "name": "grid06_dec1",
+        "definition": """
+             <style:style style:family="table-cell"
+             style:parent-style-name="Default" style:data-style-name="dec1">
+             <style:table-cell-properties
+             fo:border="0.06pt solid #000000"/>
+             <style:paragraph-properties
+             fo:margin-left="1.2mm" fo:margin-right="1.2mm"/>
+             </style:style>
+         """,
+    },
+    {
+        "name": "grid06_dec2",
+        "definition": """
+             <style:style style:family="table-cell"
+             style:parent-style-name="Default" style:data-style-name="dec2">
+             <style:table-cell-properties
+             fo:border="0.06pt solid #000000"/>
+             <style:paragraph-properties
+             fo:margin-left="1.2mm" fo:margin-right="1.2mm"/>
+             </style:style>
+         """,
+    },
+    {
+        "name": "grid06_dec4",
+        "definition": """
+             <style:style style:family="table-cell"
+             style:parent-style-name="Default" style:data-style-name="dec4">
+             <style:table-cell-properties
+             fo:border="0.06pt solid #000000"/>
+             <style:paragraph-properties
+             fo:margin-left="1.2mm" fo:margin-right="1.2mm"/>
+             </style:style>
+         """,
+    },
+    {
+        "name": "grid06_dec6",
+        "definition": """
+             <style:style style:family="table-cell"
+             style:parent-style-name="Default" style:data-style-name="dec6">
+             <style:table-cell-properties
+             fo:border="0.06pt solid #000000"/>
+             <style:paragraph-properties
+             fo:margin-left="1.2mm" fo:margin-right="1.2mm"/>
+             </style:style>
+         """,
+    },
+    {
+        "name": "cell_dec2",
+        "definition": """
+             <style:style style:family="table-cell"
+             style:parent-style-name="Default" style:data-style-name="dec2">
+             <style:paragraph-properties
+             fo:margin-right="1.2mm"/>
+             </style:style>
+         """,
     },
 ]
 
@@ -107,7 +345,7 @@ DEFAULTS_DICT = {
     "style_table_cell": "",
     "style_str": "left",
     "style_int": "right",
-    "style_float": "lpod-default-number-style",
+    "style_float": "right",
     "style_other": "left",
 }
 
@@ -115,7 +353,9 @@ BODY = "body"
 TABLE = "table"
 ROW = "row"
 VALUE = "value"
+TEXT = "text"
 NAME = "name"
+DEFINITION = "definition"
 WIDTH = "width"
 STYLE = "style"
 STYLES = "styles"
@@ -138,21 +378,32 @@ class ODSGenerator:
 
     def parse_styles(self, opt):
         for s in DEFAULT_STYLES:
-            style = Element.from_tag(s["style"])
-            style.name = s["name"]
-            self.styles_elements[s["name"]] = style
-        styles = opt.get(STYLES, [])
-        for s in styles:
-            name = s.get("name")
-            definition = s.get("style")
-            style = Element.from_tag(definition)
-            style.name = name
-            self.styles_elements[name] = style
+            try:
+                style = Element.from_tag(s[DEFINITION])
+            except Exception:
+                print("-" * 80)
+                print(s)
+                print("-" * 80)
+                raise
+            style.name = s[NAME]
+            self.styles_elements[s[NAME]] = style
+            if s.get("always_insert"):
+                self.insert_style(s[NAME])
+        styles = opt.get(STYLES)
+        if isinstance(styles, list):
+            for s in styles:
+                name = s.get(NAME)
+                definition = s.get(DEFINITION)
+                style = Element.from_tag(definition)
+                style.name = name
+                self.styles_elements[name] = style
+                if s.get("always_insert"):
+                    self.insert_style(name)
 
-    def insert_style(self, name):
+    def insert_style(self, name, automatic=True):
         if name and name not in self.used_styles and name in self.styles_elements:
             style = self.styles_elements[name]
-            self.doc.insert_style(style, automatic=True)
+            self.doc.insert_style(style, automatic=automatic)
             self.used_styles.add(name)
 
     def guess_style(self, opt, family, default):
@@ -224,9 +475,9 @@ class ODSGenerator:
             default = self.defaults["style_other"]
         style = self.guess_style(opt, "table-cell", default)
         self.insert_style(style)
-        row.append(Cell(value=value, style=style))
+        row.append(Cell(value=value, style=style, text=opt.get(TEXT)))
 
-    def _column_width_style(self, width):
+    def column_width_style(self, width):
         """width format: "10.5mm"""
         return self.doc.insert_style(
             Element.from_tag(
@@ -248,11 +499,11 @@ class ODSGenerator:
             for position, width in enumerate(width_opt):
                 if width:
                     column = table.get_column(position)
-                    column.style = self._column_width_style(width)
+                    column.style = self.column_width_style(width)
                     table.set_column(position, column)
             return
         for position, column in enumerate(table.get_columns()):
-            column.style = self._column_width_style(width_opt)
+            column.style = self.column_width_style(width_opt)
             table.set_column(position, column)
 
 
@@ -267,112 +518,17 @@ def main(param_file, dest_path):
     content_to_ods(content, dest_path)
 
 
-def test():
-    data_with_minimal_structure = [
-        [
-            ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"],
-            [0, 10, 20, 30, 40, 50, 60, 70, 80, 90],
-            [1, 11, 21, 31, 41, 51, 61, 71, 81, 91],
-            [2, 12, 22, 32, 42, 52, 62, 72, 82, 92],
-        ],
-        [
-            ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"],
-            [100, 110, 120, 130, 140, 150, 160, 170, 180, 190],
-            [101, 111, 121, 131, 141, 151, 161, 171, 181, 191],
-            [102, 112, 122, 132, 142, 152, 162, 172, 182, 192],
-        ],
-    ]
-
-    data_with_many_parameters = {
-        "styles": [
-            {
-                "name": "bg_yellow",
-                "style": """
-                    <style:style style:family="table-cell"
-                    style:parent-style-name="Default">
-                    <style:table-cell-properties fo:background-color="#fff9ae"/>
-                    <style:paragraph-properties
-                    fo:margin-left="1.2mm" fo:margin-right="1.2mm"/>
-                    </style:style>
-                """,
-            },
-            {
-                "name": "bg_yellow_grid06",
-                "style": """
-                    <style:style style:family="table-cell"
-                    style:parent-style-name="Default">
-                    <style:table-cell-properties fo:background-color="#fff9ae"
-                    fo:border="0.06pt solid #000000"/>
-                    <style:paragraph-properties
-                    fo:margin-left="1.2mm" fo:margin-right="1.2mm"/>
-                    </style:style>
-                """,
-            },
-        ],
-        "defaults": {
-            "styles_str": "bold",
-        },
-        "body": [
-            {
-                "name": "first tab",
-                "table": [
-                    ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"],
-                    [0, 10, 20, 30, 40, 50, 60, 70, 80, 90],
-                    [1, 11, 21, 31, 41, 51, 61, 71, 81, 91],
-                    [2, 12, 22, 32, 42, 52, 62, 72, 82, 92],
-                ],
-                "style": ["number", "table_row_1cm"],
-                "width": ["2cm", "4cm", "2cm", "4cm", "5cm"],
-            },
-            {
-                "name": "second tab",
-                "table": [
-                    {
-                        "row": ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"],
-                        "style": "bold_left_bg_gray_grid06",
-                    },
-                    {
-                        "row": [
-                            100.01,
-                            110.02,
-                            "hop",
-                            130,
-                            140,
-                            150,
-                            160,
-                            170,
-                            180,
-                            190,
-                        ],
-                        "style": "grid06",
-                    },
-                    {
-                        "row": [
-                            101,
-                            111,
-                            {"value": 121, "style": "bg_yellow_grid06"},
-                            131,
-                            141,
-                            151,
-                            161,
-                            171,
-                            181,
-                            191,
-                        ],
-                        "style": "grid06",
-                    },
-                    [102.314, 112, 122, 132, 142, 152, 162, 172, 182, 192],
-                ],
-                "width": "2.5cm",
-            },
-        ],
-    }
-    content_to_ods(data_with_minimal_structure, "data_with_minimal_structure.ods")
-    content_to_ods(data_with_many_parameters, "data_with_many_parameters.ods")
+def check_odfdo_version():
+    if tuple(int(x) for x in odfdo.__version__.split(".")) > (3, 3, 0):
+        return True
+    print("Error: I need odfdo version >= 3.3.0")
+    return False
 
 
 if __name__ == "__main__":
+    if not check_odfdo_version():
+        sys.exit(1)
     if len(sys.argv) != 3:
-        print("Missing parameters.")
+        print("Usage: odsgenerator.py <input.json> <output.ods>")
         sys.exit(1)
     main(sys.argv[1], sys.argv[2])

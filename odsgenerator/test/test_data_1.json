@@ -2,10 +2,10 @@
     "styles": [
         {
             "name": "bg_yellow",
-            "style": "<style:style style:family=\"table-cell\"\nstyle:parent-style-name=\"Default\">\n<style:table-cell-properties fo:background-color=\"#fff9ae\"/>\n<style:paragraph-properties\nfo:margin-left=\"1.2mm\" fo:margin-right=\"1.2mm\"/>\n</style:style>\n"
+            "definition": "<style:style style:family=\"table-cell\"\nstyle:parent-style-name=\"Default\">\n<style:table-cell-properties fo:background-color=\"#fff9ae\"/>\n<style:paragraph-properties\nfo:margin-left=\"1.2mm\" fo:margin-right=\"1.2mm\"/>\n</style:style>\n"
         }, {
             "name": "bg_yellow_grid06",
-            "style": "\n<style:style style:family=\"table-cell\"\nstyle:parent-style-name=\"Default\">\n<style:table-cell-properties fo:background-color=\"#fff9ae\"\nfo:border=\"0.06pt solid #000000\"/>\n<style:paragraph-properties\nfo:margin-left=\"1.2mm\" fo:margin-right=\"1.2mm\"/>\n</style:style>\n"
+            "definition": "\n<style:style style:family=\"table-cell\"\nstyle:parent-style-name=\"Default\">\n<style:table-cell-properties fo:background-color=\"#fff9ae\"\nfo:border=\"0.06pt solid #000000\"/>\n<style:paragraph-properties\nfo:margin-left=\"1.2mm\" fo:margin-right=\"1.2mm\"/>\n</style:style>\n"
         }
     ],
     "defaults": {
