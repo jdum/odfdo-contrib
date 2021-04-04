@@ -3,7 +3,11 @@
 # Licence: MIT
 # Authors: jerome.dumonteil@gmail.com
 """
-Simple .ODS generator from json file, using odfdo library
+Simple .ODS generator from json file, using odfdo library.
+
+Convert a JSON description of tables into an ODF document.
+    - description can be minimalist: a list of lists of lists,
+    - description can be complex, allowing styles at row or cell level.
 
 Usage:
     odsgenerator.py <input.json> <output.ods>"
@@ -34,6 +38,11 @@ A tab can be:
         - width: a list containing the width of each column of the table
         - name: str, the name of the tab
         - style: str or list of str, a style name or a list of style names
+
+A tab may have some post transformation:
+    - a list of span areas, cell coordinates are defined in the tab after its
+      creation using odfo method Table.set_span(), ie Table.set_span("A1:B:3")
+      or Table.set_span([0, 0, 2, 1])
 
 A document can be:
     - a list of tabs
@@ -148,7 +157,7 @@ DEFAULT_STYLES = [
         """,
     },
     {
-        "name": "dec1",
+        "name": "decimal1",
         "definition": """
             <number:number-style><number:number number:decimal-places="1"
             loext:min-decimal-places="1" number:min-integer-digits="1"
@@ -158,7 +167,18 @@ DEFAULT_STYLES = [
         "always_insert": True,
     },
     {
-        "name": "dec2",
+        "name": "cell_decimal1",
+        "definition": """
+             <style:style style:family="table-cell"
+             style:parent-style-name="Default"
+             style:data-style-name="decimal1">
+             <style:paragraph-properties
+             fo:margin-right="1.2mm"/>
+             </style:style>
+         """,
+    },
+    {
+        "name": "decimal2",
         "definition": """
             <number:number-style><number:number number:decimal-places="2"
             loext:min-decimal-places="2" number:min-integer-digits="1"
@@ -168,7 +188,39 @@ DEFAULT_STYLES = [
         "always_insert": True,
     },
     {
-        "name": "dec4",
+        "name": "cell_decimal2",
+        "definition": """
+             <style:style style:family="table-cell"
+             style:parent-style-name="Default"
+             style:data-style-name="decimal2">
+             <style:paragraph-properties
+             fo:margin-right="1.2mm"/>
+             </style:style>
+         """,
+    },
+    {
+        "name": "decimal3",
+        "definition": """
+            <number:number-style><number:number number:decimal-places="3"
+            loext:min-decimal-places="3" number:min-integer-digits="1"
+            number:grouping="false"/>
+            </number:number-style>
+        """,
+        "always_insert": True,
+    },
+    {
+        "name": "cell_decimal3",
+        "definition": """
+             <style:style style:family="table-cell"
+             style:parent-style-name="Default"
+             style:data-style-name="decimal3">
+             <style:paragraph-properties
+             fo:margin-right="1.2mm"/>
+             </style:style>
+         """,
+    },
+    {
+        "name": "decimal4",
         "definition": """
             <number:number-style><number:number number:decimal-places="4"
             loext:min-decimal-places="4" number:min-integer-digits="1"
@@ -178,7 +230,18 @@ DEFAULT_STYLES = [
         "always_insert": True,
     },
     {
-        "name": "dec6",
+        "name": "cell_decimal4",
+        "definition": """
+             <style:style style:family="table-cell"
+             style:parent-style-name="Default"
+             style:data-style-name="decimal4">
+             <style:paragraph-properties
+             fo:margin-right="1.2mm"/>
+             </style:style>
+         """,
+    },
+    {
+        "name": "decimal6",
         "definition": """
             <number:number-style><number:number number:decimal-places="6"
             loext:min-decimal-places="6" number:min-integer-digits="1"
@@ -186,6 +249,17 @@ DEFAULT_STYLES = [
             </number:number-style>
         """,
         "always_insert": True,
+    },
+    {
+        "name": "cell_decimal6",
+        "definition": """
+             <style:style style:family="table-cell"
+             style:parent-style-name="Default"
+             style:data-style-name="decimal6">
+             <style:paragraph-properties
+             fo:margin-right="1.2mm"/>
+             </style:style>
+         """,
     },
     {
         "name": "integer",
@@ -198,7 +272,7 @@ DEFAULT_STYLES = [
         "always_insert": True,
     },
     {
-        "name": "integer_no0",
+        "name": "integer_no_zero",
         "definition": """
             <number:number-style><number:number number:decimal-places="0"
             loext:min-decimal-places="0" number:min-integer-digits="0"
@@ -208,7 +282,7 @@ DEFAULT_STYLES = [
         "always_insert": True,
     },
     {
-        "name": "grid06",
+        "name": "grid_06pt",
         "definition": """
              <style:style style:family="table-cell"
              style:parent-style-name="Default">
@@ -220,7 +294,7 @@ DEFAULT_STYLES = [
          """,
     },
     {
-        "name": "bold_left_bg_gray_grid06",
+        "name": "bold_left_bg_gray_grid_06pt",
         "definition": """
              <style:style style:family="table-cell"
              style:parent-style-name="Default">
@@ -234,7 +308,7 @@ DEFAULT_STYLES = [
          """,
     },
     {
-        "name": "bold_center_bg_gray_grid06",
+        "name": "bold_center_bg_gray_grid_06pt",
         "definition": """
              <style:style style:family="table-cell"
              style:parent-style-name="Default">
@@ -247,7 +321,7 @@ DEFAULT_STYLES = [
          """,
     },
     {
-        "name": "grid06_right",
+        "name": "right_grid_06pt",
         "definition": """
              <style:style style:family="table-cell"
              style:parent-style-name="Default">
@@ -259,10 +333,11 @@ DEFAULT_STYLES = [
          """,
     },
     {
-        "name": "grid06_int",
+        "name": "integer_grid_06pt",
         "definition": """
              <style:style style:family="table-cell"
-             style:parent-style-name="Default" style:data-style-name="integer">
+             style:parent-style-name="Default"
+             style:data-style-name="integer">
              <style:table-cell-properties
              fo:border="0.06pt solid #000000"/>
              <style:paragraph-properties
@@ -271,20 +346,23 @@ DEFAULT_STYLES = [
          """,
     },
     {
-        "name": "grid06_center_int",
+        "name": "center_integer_no_zero_grid_06pt",
         "definition": """
              <style:style style:family="table-cell"
-             style:parent-style-name="Default" style:data-style-name="integer_no0">
-             <style:table-cell-properties fo:border="0.06pt solid #000000"/>
+             style:parent-style-name="Default"
+             style:data-style-name="integer_no_zero">
+             <style:table-cell-properties
+             fo:border="0.06pt solid #000000"/>
              <style:paragraph-properties fo:text-align="center"/>
              </style:style>
          """,
     },
     {
-        "name": "grid06_dec1",
+        "name": "decimal1_grid_06pt",
         "definition": """
              <style:style style:family="table-cell"
-             style:parent-style-name="Default" style:data-style-name="dec1">
+             style:parent-style-name="Default"
+             style:data-style-name="decimal1">
              <style:table-cell-properties
              fo:border="0.06pt solid #000000"/>
              <style:paragraph-properties
@@ -293,10 +371,11 @@ DEFAULT_STYLES = [
          """,
     },
     {
-        "name": "grid06_dec2",
+        "name": "decimal2_grid_06pt",
         "definition": """
              <style:style style:family="table-cell"
-             style:parent-style-name="Default" style:data-style-name="dec2">
+             style:parent-style-name="Default"
+             style:data-style-name="decimal2">
              <style:table-cell-properties
              fo:border="0.06pt solid #000000"/>
              <style:paragraph-properties
@@ -305,10 +384,11 @@ DEFAULT_STYLES = [
          """,
     },
     {
-        "name": "grid06_dec4",
+        "name": "decimal3_grid_06pt",
         "definition": """
              <style:style style:family="table-cell"
-             style:parent-style-name="Default" style:data-style-name="dec4">
+             style:parent-style-name="Default"
+             style:data-style-name="decimal3">
              <style:table-cell-properties
              fo:border="0.06pt solid #000000"/>
              <style:paragraph-properties
@@ -317,10 +397,11 @@ DEFAULT_STYLES = [
          """,
     },
     {
-        "name": "grid06_dec6",
+        "name": "decimal4_grid_06pt",
         "definition": """
              <style:style style:family="table-cell"
-             style:parent-style-name="Default" style:data-style-name="dec6">
+             style:parent-style-name="Default"
+             style:data-style-name="decimal4">
              <style:table-cell-properties
              fo:border="0.06pt solid #000000"/>
              <style:paragraph-properties
@@ -329,12 +410,15 @@ DEFAULT_STYLES = [
          """,
     },
     {
-        "name": "cell_dec2",
+        "name": "decimal6_grid_06pt",
         "definition": """
              <style:style style:family="table-cell"
-             style:parent-style-name="Default" style:data-style-name="dec2">
+             style:parent-style-name="Default"
+             style:data-style-name="decimal6">
+             <style:table-cell-properties
+             fo:border="0.06pt solid #000000"/>
              <style:paragraph-properties
-             fo:margin-right="1.2mm"/>
+             fo:margin-left="1.2mm" fo:margin-right="1.2mm"/>
              </style:style>
          """,
     },
@@ -357,6 +441,7 @@ TEXT = "text"
 NAME = "name"
 DEFINITION = "definition"
 WIDTH = "width"
+SPAN = "span"
 STYLE = "style"
 STYLES = "styles"
 DEFAULTS = "defaults"
@@ -426,7 +511,7 @@ class ODSGenerator:
         if isinstance(item, dict):
             inner = item.pop(key, [])
             return (inner, item)
-        # item can be list or value
+        # item can be list or value, or None
         return (item, {})
 
     def parse(self, content):
@@ -449,6 +534,7 @@ class ODSGenerator:
         for row_content in rows:
             self.parse_row(table, row_content, style_table_row, style_table_cell)
         self.parse_width(table, opt)
+        self.parse_span(table, opt)
         self.doc.body.append(table)
 
     def parse_row(self, table, row_content, style_table_row, style_table_cell):
@@ -465,6 +551,8 @@ class ODSGenerator:
         value, opt = self.split(cell_content, VALUE)
         if style_table_cell:
             default = style_table_cell
+        elif value is None:
+            default = self.defaults["style_str"]
         elif isinstance(value, str):
             default = self.defaults["style_str"]
         elif isinstance(value, int):
@@ -475,7 +563,12 @@ class ODSGenerator:
             default = self.defaults["style_other"]
         style = self.guess_style(opt, "table-cell", default)
         self.insert_style(style)
-        row.append(Cell(value=value, style=style, text=opt.get(TEXT)))
+        cell = Cell(value=value, style=style, text=opt.get(TEXT))
+        attr = opt.get("attr")
+        if attr:
+            for k, v in attr.items():
+                cell.set_attribute(k, v)
+        row.append(cell)
 
     def column_width_style(self, width):
         """width format: "10.5mm"""
@@ -505,6 +598,16 @@ class ODSGenerator:
         for position, column in enumerate(table.get_columns()):
             column.style = self.column_width_style(width_opt)
             table.set_column(position, column)
+
+    @staticmethod
+    def parse_span(table, opt):
+        span_opt = opt.get(SPAN)
+        if not span_opt:
+            return
+        if not isinstance(span_opt, list):
+            span_opt = [span_opt]
+        for area in span_opt:
+            table.set_span(area)
 
 
 def content_to_ods(data, dest_path):

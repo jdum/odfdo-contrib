@@ -16,9 +16,12 @@
             "name": "first tab",
             "table": [
                 [
-                    "a",
-                    "b",
-                    "c",
+                    {
+                        "value": "spanned cell",
+                        "style": "bold"
+                    },
+                    null,
+                    null,
                     "d",
                     "e",
                     "f",
@@ -28,9 +31,9 @@
                     "j"
                 ],
                 [
-                    0,
-                    10,
-                    20,
+                    null,
+                    null,
+                    null,
                     30,
                     40,
                     50,
@@ -67,7 +70,10 @@
             "style": [
                 "number", "table_row_1cm"
             ],
-            "width": ["2cm", "4cm", "2cm", "4cm", "5cm"]
+            "span": [
+                [0, 0, 2, 1]
+            ],
+            "width": ["1cm", "2cm", "3cm", "4cm", "2cm"]
         }, {
             "name": "second tab",
             "table": [
@@ -84,7 +90,7 @@
                         "i",
                         "j"
                     ],
-                    "style": "bold_left_bg_gray_grid06"
+                    "style": "bold_left_bg_gray_grid_06pt"
                 }, {
                     "row": [
                         100.01,
@@ -98,7 +104,7 @@
                         180,
                         190
                     ],
-                    "style": "grid06"
+                    "style": "decimal2_grid_06pt"
                 }, {
                     "row": [
                         101,
@@ -114,20 +120,22 @@
                         181,
                         191
                     ],
-                    "style": "grid06"
-                },
-                [
-                    102.314,
-                    112,
-                    122,
-                    132,
-                    142,
-                    152,
-                    162,
-                    172,
-                    182,
-                    192
-                ]
+                    "style": "decimal3_grid_06pt"
+                }, {
+                    "row": [
+                        102.314,
+                        112,
+                        122,
+                        132,
+                        0,
+                        152,
+                        0,
+                        172,
+                        0,
+                        192
+                    ],
+                    "style": "center_integer_no_zero_grid_06pt"
+                }
             ],
             "width": "2.5cm"
         }

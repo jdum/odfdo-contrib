@@ -1,4 +1,8 @@
-Simple .ODS generator from json file, using odfdo library
+Simple .ODS generator from json file, using odfdo library.
+
+Convert a JSON description of tables into an ODF document.
+    - description can be minimalist: a list of lists of lists,
+    - description can be complex, allowing styles at row or cell level.
 
 Usage:
     odsgenerator.py <input.json> <output.ods>"
@@ -29,6 +33,11 @@ A tab can be:
         - width: a list containing the width of each column of the table
         - name: str, the name of the tab
         - style: str or list of str, a style name or a list of style names
+
+A tab may have some post transformation:
+    - a list of span areas, cell coordinates are defined in the tab after its
+      creation using odfo method Table.set_span(), ie Table.set_span("A1:B:3")
+      or Table.set_span([0, 0, 2, 1])
 
 A document can be:
     - a list of tabs
