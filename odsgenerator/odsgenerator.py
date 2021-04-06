@@ -3,14 +3,10 @@
 # Licence: MIT
 # Authors: jerome.dumonteil@gmail.com
 """
-Simple .ODS generator from json file, using odfdo library.
-
-Convert a JSON description of tables into an ODF document.
+This script parses a JSON or YAML description of tables and generates an
+ODF document usin the odfdo library.
     - description can be minimalist: a list of lists of lists,
     - description can be complex, allowing styles at row or cell level.
-
-Usage:
-    odsgenerator.py <input.json> <output.ods>"
 
 Principle:
     - a document is a list of tabs,
@@ -74,11 +70,16 @@ Styles:
 """
 
 import sys
-import json
+import argparse
+
+try:
+    import yaml
+except ModuleNotFoundError:
+    import json
 import odfdo
 from odfdo import Document, Table, Row, Cell, Element
 
-__version__ = 1.2
+__version__ = 1.3
 
 DEFAULT_STYLES = [
     {
@@ -615,10 +616,30 @@ def content_to_ods(data, dest_path):
     doc.save(dest_path)
 
 
-def main(param_file, dest_path):
-    with open(param_file, mode="r", encoding="utf8") as f:
-        content = json.load(f)
+def odsgen(param_file, dest_path):
+    if "yaml" in sys.modules:
+        with open(param_file, mode="r", encoding="utf8") as f:
+            content = yaml.load(f, yaml.SafeLoader)
+    else:  # fall back to json
+        with open(param_file, mode="r", encoding="utf8") as f:
+            content = json.load(f)
     content_to_ods(content, dest_path)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Generates an ODF .ods file from json or yaml file.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
+    parser.add_argument(
+        "input_file", help="input file containing data in json or yaml format"
+    )
+    parser.add_argument(
+        "output_file", help="output file, .ods file generated from input"
+    )
+    args = parser.parse_args()
+    odsgen(args.input_file, args.output_file)
 
 
 def check_odfdo_version():
@@ -631,7 +652,4 @@ def check_odfdo_version():
 if __name__ == "__main__":
     if not check_odfdo_version():
         sys.exit(1)
-    if len(sys.argv) != 3:
-        print("Usage: odsgenerator.py <input.json> <output.ods>")
-        sys.exit(1)
-    main(sys.argv[1], sys.argv[2])
+    main()

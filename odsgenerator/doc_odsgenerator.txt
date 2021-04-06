@@ -1,11 +1,18 @@
-Simple .ODS generator from json file, using odfdo library.
+usage: odsgenerator.py [-h] input_file output_file
 
-Convert a JSON description of tables into an ODF document.
+Generates an ODF .ods file from json or yaml file.
+
+positional arguments:
+  input_file   input file containing data in json or yaml format
+  output_file  output file, .ods file generated from input
+
+optional arguments:
+  -h, --help   show this help message and exit
+
+This script parses a JSON or YAML description of tables and generates an
+ODF document usin the odfdo library.
     - description can be minimalist: a list of lists of lists,
     - description can be complex, allowing styles at row or cell level.
-
-Usage:
-    odsgenerator.py <input.json> <output.ods>"
 
 Principle:
     - a document is a list of tabs,
